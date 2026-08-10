@@ -5,7 +5,6 @@
   "description": "LINE公式アカウントを窓口としたGO専用AI秘書システム",
   "scripts": {
     "dev": "vercel dev",
-    "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
