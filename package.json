@@ -1,0 +1,22 @@
+{
+  "name": "ai-hisho",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LINE公式アカウントを窓口としたGO専用AI秘書システム",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0",
+    "@line/bot-sdk": "^9.6.0",
+    "@vercel/kv": "^3.0.0",
+    "googleapis": "^144.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@vercel/node": "^3.2.0",
+    "typescript": "^5.7.0"
+  }
+}
