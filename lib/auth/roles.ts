@@ -1,9 +1,7 @@
 export type Role = 'owner' | 'staff' | 'unknown';
 
-function ownerUserId(): string {
-  const id = process.env.GO_LINE_USER_ID;
-  if (!id) throw new Error('GO_LINE_USER_ID is not set');
-  return id;
+function ownerUserId(): string | undefined {
+  return process.env.GO_LINE_USER_ID;
 }
 
 function staffUserIds(): string[] {
