@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { formatWeatherLine, getSendaiWeatherToday } from '../../lib/weather';
 import { listEvents, type CalendarEvent } from '../../lib/google/calendar';
+import { listTasks, type TaskItem } from '../../lib/google/tasks';
 import { pushText } from '../../lib/line';
 import { jstDateString } from '../../lib/date';
 
@@ -14,6 +15,17 @@ function formatEventsSection(events: CalendarEvent[], date: string): string {
   const dayEvents = events.filter((e) => e.start.slice(0, 10) === date);
   if (dayEvents.length === 0) return '予定はありません';
   return dayEvents.map(formatEventLine).join('\n');
+}
+
+function formatTaskLine(task: TaskItem): string {
+  if (!task.due) return `・${task.title}`;
+  const [, month, day] = task.due.split('-');
+  return `・${task.title}(期限: ${Number(month)}/${Number(day)})`;
+}
+
+function formatTasksSection(tasks: TaskItem[]): string {
+  if (tasks.length === 0) return '未完了のタスクはありません';
+  return tasks.map(formatTaskLine).join('\n');
 }
 
 function isAuthorizedCronRequest(req: VercelRequest): boolean {
@@ -38,9 +50,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const tomorrow = jstDateString(1);
 
   try {
-    const [weather, events] = await Promise.all([
+    const [weather, events, tasks] = await Promise.all([
       getSendaiWeatherToday(),
       listEvents(`${today}T00:00:00+09:00`, `${tomorrow}T23:59:59+09:00`),
+      listTasks(false),
     ]);
 
     const message = [
@@ -53,6 +66,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       '',
       '【明日の予定】',
       formatEventsSection(events, tomorrow),
+      '',
+      '【未完了のタスク】',
+      formatTasksSection(tasks),
     ].join('\n');
 
     await pushText(ownerUserId, message);
