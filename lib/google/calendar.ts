@@ -48,6 +48,7 @@ export async function listEvents(timeMinISO: string, timeMaxISO: string): Promis
     timeMax: timeMaxISO,
     singleEvents: true,
     orderBy: 'startTime',
+    timeZone: TIMEZONE,
   });
   return (res.data.items ?? []).map(toCalendarEvent);
 }
