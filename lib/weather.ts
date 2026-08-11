@@ -41,15 +41,34 @@ export async function getSendaiWeatherToday(): Promise<TodayWeather> {
   const weatherRaw = findByDate(weatherSeries.timeDefines, weathers, todayDate) ?? weathers[0];
   const weatherText = (weatherRaw ?? '不明').replace(/\s+/g, '').replace(/　/g, '');
 
-  const weeklyTempSeries = weekly.timeSeries[1];
-  const tempArea = weeklyTempSeries.areas.find((a) => a.area.code === amedasCode);
-  const tempsMax = (tempArea?.tempsMax as string[] | undefined) ?? [];
-  const tempsMin = (tempArea?.tempsMin as string[] | undefined) ?? [];
+  // 週間予報(data[1])のtempsMax/tempsMinは当日分が空欄のことが多いため、
+  // 当日の最高/最低は短期予報(data[0].timeSeries[2])のtempsを優先的に使う。
+  // 各timeDefineの時刻が00時のものが最低気温、それ以外(9時等)が最高気温を表す。
+  let maxTemp: string | null = null;
+  let minTemp: string | null = null;
 
-  let maxTemp = findByDate(weeklyTempSeries.timeDefines, tempsMax, todayDate) ?? null;
-  let minTemp = findByDate(weeklyTempSeries.timeDefines, tempsMin, todayDate) ?? null;
-  if (maxTemp === '') maxTemp = null;
-  if (minTemp === '') minTemp = null;
+  const shortTempSeries = shortTerm.timeSeries[2];
+  const shortTempArea = shortTempSeries?.areas.find((a) => a.area.code === amedasCode);
+  const shortTemps = (shortTempArea?.temps as string[] | undefined) ?? [];
+  const todayEntries =
+    shortTempSeries?.timeDefines
+      .map((td, i) => ({ i, date: jstDatePart(td), hour: Number(td.slice(11, 13)) }))
+      .filter((x) => x.date === todayDate) ?? [];
+
+  for (const entry of todayEntries) {
+    const value = shortTemps[entry.i] || null;
+    if (entry.hour === 0) minTemp = value;
+    else maxTemp = value;
+  }
+
+  if (maxTemp === null && minTemp === null) {
+    const weeklyTempSeries = weekly.timeSeries[1];
+    const tempArea = weeklyTempSeries.areas.find((a) => a.area.code === amedasCode);
+    const tempsMax = (tempArea?.tempsMax as string[] | undefined) ?? [];
+    const tempsMin = (tempArea?.tempsMin as string[] | undefined) ?? [];
+    maxTemp = findByDate(weeklyTempSeries.timeDefines, tempsMax, todayDate) || null;
+    minTemp = findByDate(weeklyTempSeries.timeDefines, tempsMin, todayDate) || null;
+  }
 
   return { weatherText, maxTemp, minTemp };
 }
