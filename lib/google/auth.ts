@@ -5,6 +5,7 @@ const REFRESH_TOKEN_KEY = 'google:refresh_token';
 
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/tasks',
   'https://www.googleapis.com/auth/youtube.readonly',
   'https://www.googleapis.com/auth/yt-analytics.readonly',
 ];

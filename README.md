@@ -55,12 +55,13 @@ lib/
 1. [Google Cloud Console](https://console.cloud.google.com/) で新規プロジェクトを作成。
 2. 「APIとサービス」→「ライブラリ」から以下を有効化:
    - Google Calendar API
+   - Google Tasks API
    - YouTube Data API v3
    - YouTube Analytics API
 3. 「OAuth同意画面」を設定:
    - User Type: 外部(個人利用なので審査不要の「テスト」状態のままでOK)
    - テストユーザーにGO本人のGoogleアカウントを追加
-   - スコープ: Calendar読み書き、YouTube Data読み取り、YouTube Analytics読み取り
+   - スコープ: Calendar読み書き、Tasks読み書き、YouTube Data読み取り、YouTube Analytics読み取り
    - ⚠️ テストユーザー状態だとrefresh_tokenが7日で失効する場合があります。長期運用する場合は
      OAuth同意画面を「本番環境に公開」に切り替えてください(個人利用のみなら審査は基本不要)。
 4. 「認証情報」→「OAuth クライアント ID を作成」(アプリケーションの種類: ウェブアプリケーション)

@@ -1,5 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { createEvent, deleteEvent, listEvents, updateEvent } from '../google/calendar';
+import { completeTask, createTask, deleteTask, listTasks } from '../google/tasks';
 import { getVideoAnalytics, listRecentVideos } from '../google/youtube';
 import { addIdea, listIdeas } from '../ideas';
 
@@ -60,6 +61,54 @@ export const TOOLS: Anthropic.Tool[] = [
         eventId: { type: 'string' },
       },
       required: ['eventId'],
+    },
+  },
+  {
+    name: 'list_tasks',
+    description:
+      'Googleタスク(チェックリスト形式のやること)の未完了一覧を取得する。特定の日時に縛られない「〇〇をやる」系の依頼はこちらを使い、時間指定・終日の「予定」にはlist_eventsを使うこと。',
+    input_schema: {
+      type: 'object',
+      properties: {
+        includeCompleted: { type: 'boolean', description: '完了済みタスクも含めるか(デフォルトfalse)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'create_task',
+    description:
+      'Googleタスクを1件作成する。「〇〇までに××する」「××しないと」のような、特定時刻を伴わないやることの依頼に使う。期限は任意。',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'タスクの内容' },
+        dueDate: { type: 'string', description: '期限日 YYYY-MM-DD(JST, 任意)' },
+        notes: { type: 'string', description: '補足メモ(任意)' },
+      },
+      required: ['title'],
+    },
+  },
+  {
+    name: 'complete_task',
+    description: 'タスクを完了にする。taskIdはlist_tasksの結果から取得すること。',
+    input_schema: {
+      type: 'object',
+      properties: {
+        taskId: { type: 'string' },
+      },
+      required: ['taskId'],
+    },
+  },
+  {
+    name: 'delete_task',
+    description: 'タスクを削除する。taskIdはlist_tasksの結果から取得すること。',
+    input_schema: {
+      type: 'object',
+      properties: {
+        taskId: { type: 'string' },
+      },
+      required: ['taskId'],
     },
   },
   {
@@ -137,6 +186,23 @@ export async function executeTool(name: string, input: Record<string, unknown>):
     }
     case 'delete_event': {
       await deleteEvent(input.eventId as string);
+      return { deleted: true };
+    }
+    case 'list_tasks': {
+      return listTasks((input.includeCompleted as boolean | undefined) ?? false);
+    }
+    case 'create_task': {
+      return createTask(
+        input.title as string,
+        input.dueDate as string | undefined,
+        input.notes as string | undefined
+      );
+    }
+    case 'complete_task': {
+      return completeTask(input.taskId as string);
+    }
+    case 'delete_task': {
+      await deleteTask(input.taskId as string);
       return { deleted: true };
     }
     case 'add_idea': {
