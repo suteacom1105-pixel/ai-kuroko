@@ -28,6 +28,7 @@ async function handleEvent(event: WebhookEvent): Promise<void> {
 
   if (role === 'unknown' || !userId) {
     // 個人利用のシステムのため、GO本人・スタッフ以外には応答しない
+    console.log('unrecognized LINE userId (未登録のuserId):', userId);
     return;
   }
 
