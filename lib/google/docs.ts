@@ -41,7 +41,7 @@ export async function addIdea(content: string): Promise<{ line: string; docUrl: 
   await docs.documents.batchUpdate({
     documentId,
     requestBody: {
-      requests: [{ insertText: { endOfSegmentLocation: {}, text: `${line}\n` } }],
+      requests: [{ insertText: { endOfSegmentLocation: {}, text: `\n${line}\n` } }],
     },
   });
 
