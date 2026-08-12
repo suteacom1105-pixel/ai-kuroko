@@ -2,7 +2,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { createEvent, deleteEvent, listEvents, updateEvent } from '../google/calendar';
 import { completeTask, createTask, deleteTask, listTasks } from '../google/tasks';
 import { getVideoAnalytics, listRecentVideos } from '../google/youtube';
-import { addIdea, listIdeas } from '../ideas';
+import { addIdea, listIdeas } from '../google/docs';
 
 export const TOOLS: Anthropic.Tool[] = [
   {
@@ -113,7 +113,7 @@ export const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'add_idea',
-    description: 'アイデアメモを1件保存する。',
+    description: 'アイデアメモを1件、専用のGoogleドキュメントに追記する。',
     input_schema: {
       type: 'object',
       properties: {
@@ -124,7 +124,7 @@ export const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'list_ideas',
-    description: '保存済みのアイデアメモを新しい順に一覧取得する。',
+    description: 'Googleドキュメントに保存済みのアイデアメモを新しい順に一覧取得する。',
     input_schema: {
       type: 'object',
       properties: {

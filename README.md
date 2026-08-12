@@ -16,10 +16,9 @@ frontdesk/index.ts         スタッフ向け:伝言をGOにプッシュ転送�
 lib/
   line.ts                  LINE Messaging APIラッパー(署名検証/reply/push)
   claude/tools.ts          Claude Tool Use定義とディスパッチャ
-  google/{auth,calendar,youtube}.ts
+  google/{auth,calendar,tasks,youtube,docs}.ts
   weather.ts               気象庁(JMA)から仙台の天気を取得
-  ideas.ts                 アイデアメモ(Vercel KV)
-  kv.ts                    会話履歴の一時保存
+  kv.ts                    会話履歴の一時保存(アイデアメモ本体はGoogleドキュメントに保存、ドキュメントIDのみKVに保持)
   auth/roles.ts            userId→owner/staff判定
   date.ts                  JST日付ユーティリティ
 ```
@@ -58,10 +57,11 @@ lib/
    - Google Tasks API
    - YouTube Data API v3
    - YouTube Analytics API
+   - Google Docs API(アイデアメモの保存先)
 3. 「OAuth同意画面」を設定:
    - User Type: 外部(個人利用なので審査不要の「テスト」状態のままでOK)
    - テストユーザーにGO本人のGoogleアカウントを追加
-   - スコープ: Calendar読み書き、Tasks読み書き、YouTube Data読み取り、YouTube Analytics読み取り
+   - スコープ: Calendar読み書き、Tasks読み書き、YouTube Data読み取り、YouTube Analytics読み取り、Docs読み書き
    - ⚠️ テストユーザー状態だとrefresh_tokenが7日で失効する場合があります。長期運用する場合は
      OAuth同意画面を「本番環境に公開」に切り替えてください(個人利用のみなら審査は基本不要)。
 4. 「認証情報」→「OAuth クライアント ID を作成」(アプリケーションの種類: ウェブアプリケーション)
@@ -113,6 +113,7 @@ https://<デプロイ先ドメイン>/api/oauth/google/authorize
 ## 動作確認のポイント
 
 - LINEでGO本人から「今日の予定教えて」「明日15時に歯医者」等を送って秘書モードの動作を確認。
+- 「〇〇をアイデアメモして」等を送り、専用のGoogleドキュメントに追記されることを確認(初回はドキュメントが自動作成され、そのIDがVercel KVに保存される)。
 - スタッフのアカウントから何か送信し、GO本人に「【伝言】〇〇さんより:」という形でプッシュ通知が
   届くことを確認(この際、予定には自動反映されないことも確認)。
 - `api/cron/morning.ts` はVercelダッシュボードの Cron Jobs 画面から手動実行(Run)して
@@ -130,3 +131,6 @@ https://<デプロイ先ドメイン>/api/oauth/google/authorize
 - OAuth同意画面が「テスト」状態のままだとrefresh_tokenが7日で失効することがあります。
   「Googleのrefresh_tokenが未設定です」というエラーが出た場合は `/api/oauth/google/authorize`
   から再認証するか、本番運用への切り替えを検討してください。
+- Googleの認証スコープを追加・変更した場合(例: アイデアメモ機能でのDocs APIスコープ追加)、
+  既存のrefresh_tokenには新スコープの権限が含まれていません。`/api/oauth/google/authorize` から
+  再認証してrefresh_tokenを更新してください。
