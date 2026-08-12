@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { WebhookEvent } from '@line/bot-sdk';
-import { replyText, verifyLineSignature } from '../lib/line';
+import { getImageMessageContent, replyText, verifyLineSignature } from '../lib/line';
 import { resolveRole } from '../lib/auth/roles';
-import { handleSecretaryMessage } from '../secretary';
+import { handleSecretaryImage, handleSecretaryMessage } from '../secretary';
 import { handleFrontdeskMessage } from '../frontdesk';
 
 // LINEの署名検証には生のリクエストボディが必要なため、Vercelの自動bodyParserを無効化する
@@ -21,7 +21,8 @@ async function readRawBody(req: VercelRequest): Promise<Buffer> {
 }
 
 async function handleEvent(event: WebhookEvent): Promise<void> {
-  if (event.type !== 'message' || event.message.type !== 'text') return;
+  if (event.type !== 'message') return;
+  if (event.message.type !== 'text' && event.message.type !== 'image') return;
 
   const userId = event.source.userId;
   const role = resolveRole(userId);
@@ -29,6 +30,14 @@ async function handleEvent(event: WebhookEvent): Promise<void> {
   if (role === 'unknown' || !userId) {
     // 個人利用のシステムのため、GO本人・スタッフ以外には応答しない
     console.log('unrecognized LINE userId (未登録のuserId):', userId);
+    return;
+  }
+
+  if (event.message.type === 'image') {
+    // 画像(チケットのスクショ等)からの予定登録はGO本人のみ対応
+    if (role !== 'owner') return;
+    const image = await getImageMessageContent(event.message.id);
+    await replyText(event.replyToken, await handleSecretaryImage(userId, image));
     return;
   }
 

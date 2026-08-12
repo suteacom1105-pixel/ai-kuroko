@@ -27,6 +27,9 @@ function systemPrompt(): string {
   ].join('\n');
 }
 
+const TICKET_IMAGE_PROMPT =
+  'これはチケットのスクリーンショットです。新幹線・飛行機・コンサート等の日時、座席番号、号車、搭乗券番号など予定管理に必要な情報を読み取り、create_eventツールで予定に登録してください。登録後、登録した内容を要約して返信してください。情報が読み取れない場合は、その旨を伝えてください。';
+
 export async function handleSecretaryMessage(userId: string, userText: string): Promise<string> {
   const history = await getConversation(userId);
   const messages: Anthropic.MessageParam[] = [
@@ -34,6 +37,43 @@ export async function handleSecretaryMessage(userId: string, userText: string): 
     { role: 'user', content: userText },
   ];
 
+  const replyText = await runConversation(messages);
+
+  await appendConversation(userId, [
+    { role: 'user', content: userText },
+    { role: 'assistant', content: replyText },
+  ]);
+
+  return replyText;
+}
+
+export async function handleSecretaryImage(
+  userId: string,
+  image: { base64: string; mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' }
+): Promise<string> {
+  const history = await getConversation(userId);
+  const messages: Anthropic.MessageParam[] = [
+    ...history.map((t) => ({ role: t.role, content: t.content }) as Anthropic.MessageParam),
+    {
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.base64 } },
+        { type: 'text', text: TICKET_IMAGE_PROMPT },
+      ],
+    },
+  ];
+
+  const replyText = await runConversation(messages);
+
+  await appendConversation(userId, [
+    { role: 'user', content: '[チケット画像を送信]' },
+    { role: 'assistant', content: replyText },
+  ]);
+
+  return replyText;
+}
+
+async function runConversation(messages: Anthropic.MessageParam[]): Promise<string> {
   let finalText = '';
 
   for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
@@ -83,12 +123,5 @@ export async function handleSecretaryMessage(userId: string, userText: string): 
     messages.push({ role: 'user', content: toolResults });
   }
 
-  const replyText = finalText || 'すみません、うまく処理できませんでした。もう一度お願いします。';
-
-  await appendConversation(userId, [
-    { role: 'user', content: userText },
-    { role: 'assistant', content: replyText },
-  ]);
-
-  return replyText;
+  return finalText || 'すみません、うまく処理できませんでした。もう一度お願いします。';
 }

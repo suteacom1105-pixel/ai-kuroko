@@ -11,7 +11,7 @@ api/
   oauth/google/
     authorize.ts           Google初回認証の入口(ブラウザでアクセス)
     callback.ts            認証コールバック(refresh_tokenをKVに保存)
-secretary/index.ts         GO本人向け:Claude Tool Useの会話ループ
+secretary/index.ts         GO本人向け:Claude Tool Useの会話ループ(テキスト+チケット画像からの予定登録)
 frontdesk/index.ts         スタッフ向け:伝言をGOにプッシュ転送するだけ
 lib/
   line.ts                  LINE Messaging APIラッパー(署名検証/reply/push)
@@ -115,6 +115,7 @@ https://<デプロイ先ドメイン>/api/oauth/google/authorize
 - LINEでGO本人から「今日の予定教えて」「明日15時に歯医者」等を送って秘書モードの動作を確認。
 - 「〇〇をアイデアメモして」等を送り、専用のGoogleドキュメントに追記されることを確認(初回はドキュメントが自動作成され、そのIDがVercel KVに保存される)。
 - 「新幹線予約した、〇月〇日15時、のぞみ23号3号車5A、予定に入れて」等を送り、予定のメモ欄に座席番号等の詳細が入ることを確認。当日朝の通知にもその内容が表示される。
+- チケットのスクリーンショット画像をLINEで送り、日時・座席番号等が読み取られて予定に自動登録されることを確認(GO本人のみ対応、スタッフの画像は無視される)。
 - スタッフのアカウントから何か送信し、GO本人に「【伝言】〇〇さんより:」という形でプッシュ通知が
   届くことを確認(この際、予定には自動反映されないことも確認)。
 - `api/cron/morning.ts` はVercelダッシュボードの Cron Jobs 画面から手動実行(Run)して

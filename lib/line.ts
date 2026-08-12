@@ -1,10 +1,12 @@
 import { messagingApi, validateSignature, type WebhookEvent } from '@line/bot-sdk';
+import { buffer } from 'node:stream/consumers';
 
 export type { WebhookEvent };
 
-const { MessagingApiClient } = messagingApi;
+const { MessagingApiClient, MessagingApiBlobClient } = messagingApi;
 
 let client: InstanceType<typeof MessagingApiClient> | null = null;
+let blobClient: InstanceType<typeof MessagingApiBlobClient> | null = null;
 
 function getClient(): InstanceType<typeof MessagingApiClient> {
   if (!client) {
@@ -13,6 +15,15 @@ function getClient(): InstanceType<typeof MessagingApiClient> {
     client = new MessagingApiClient({ channelAccessToken });
   }
   return client;
+}
+
+function getBlobClient(): InstanceType<typeof MessagingApiBlobClient> {
+  if (!blobClient) {
+    const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+    if (!channelAccessToken) throw new Error('LINE_CHANNEL_ACCESS_TOKEN is not set');
+    blobClient = new MessagingApiBlobClient({ channelAccessToken });
+  }
+  return blobClient;
 }
 
 export function verifyLineSignature(rawBody: Buffer, signature: string | undefined): boolean {
@@ -48,4 +59,24 @@ export async function getDisplayName(userId: string): Promise<string> {
   } catch {
     return 'スタッフ';
   }
+}
+
+export type ImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+
+function normalizeImageMediaType(contentType: string | null): ImageMediaType {
+  if (contentType?.includes('png')) return 'image/png';
+  if (contentType?.includes('gif')) return 'image/gif';
+  if (contentType?.includes('webp')) return 'image/webp';
+  return 'image/jpeg';
+}
+
+export async function getImageMessageContent(
+  messageId: string
+): Promise<{ base64: string; mediaType: ImageMediaType }> {
+  const { body, httpResponse } = await getBlobClient().getMessageContentWithHttpInfo(messageId);
+  const data = await buffer(body);
+  return {
+    base64: data.toString('base64'),
+    mediaType: normalizeImageMediaType(httpResponse.headers.get('content-type')),
+  };
 }
