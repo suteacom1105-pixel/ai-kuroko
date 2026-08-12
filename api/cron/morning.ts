@@ -6,9 +6,10 @@ import { pushText } from '../../lib/line';
 import { jstDateString } from '../../lib/date';
 
 function formatEventLine(event: CalendarEvent): string {
-  if (event.isAllDay) return `・終日 ${event.summary}`;
+  const detail = event.description ? `(${event.description.replace(/\n/g, ' / ')})` : '';
+  if (event.isAllDay) return `・終日 ${event.summary}${detail}`;
   const time = event.start.slice(11, 16); // "HH:mm" (JSTオフセット付きISOのため)
-  return `・${time} ${event.summary}`;
+  return `・${time} ${event.summary}${detail}`;
 }
 
 function formatEventsSection(events: CalendarEvent[], date: string): string {

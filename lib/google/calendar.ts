@@ -25,6 +25,7 @@ export type EventInput = {
 export type CalendarEvent = {
   id: string;
   summary: string;
+  description: string | null;
   start: string;
   end: string;
   isAllDay: boolean;
@@ -34,6 +35,7 @@ function toCalendarEvent(event: calendar_v3.Schema$Event): CalendarEvent {
   return {
     id: event.id ?? '',
     summary: event.summary ?? '(タイトルなし)',
+    description: event.description ?? null,
     start: event.start?.dateTime ?? event.start?.date ?? '',
     end: event.end?.dateTime ?? event.end?.date ?? '',
     isAllDay: Boolean(event.start?.date),
