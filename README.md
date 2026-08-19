@@ -1,6 +1,6 @@
 # LINE AI秘書
 
-GO専用のLINE公式アカウント秘書システム。Vercel Functions + Claude API (Tool Use) + Google Calendar/YouTube API + 気象庁APIで構成。
+GO専用のLINE公式アカウント秘書システム。Vercel Functions + Claude API (Tool Use) + Google Calendar/Tasks/Docs/Gmail/YouTube API + 気象庁APIで構成。
 
 ## ディレクトリ構成
 
@@ -8,15 +8,21 @@ GO専用のLINE公式アカウント秘書システム。Vercel Functions + Clau
 api/
   webhook.ts              LINE Webhook受信口(userId判定→秘書/窓口モードに振り分け)
   cron/morning.ts          毎朝の天気+予定通知(Vercel Cron)
+  cron/gmail-check.ts      毎朝のYouTube案件メールチェック(Vercel Cron)
   oauth/google/
     authorize.ts           Google初回認証の入口(ブラウザでアクセス)
     callback.ts            認証コールバック(refresh_tokenをKVに保存)
+  oauth/gmail/
+    authorize.ts           Gmail監視用アカウントの初回認証の入口(秘書用と別アカウント)
+    callback.ts            認証コールバック(refresh_tokenを別のKVキーに保存)
 secretary/index.ts         GO本人向け:Claude Tool Useの会話ループ(テキスト+チケット画像からの予定登録)
 frontdesk/index.ts         スタッフ向け:伝言をGOにプッシュ転送するだけ
 lib/
   line.ts                  LINE Messaging APIラッパー(署名検証/reply/push)
   claude/tools.ts          Claude Tool Use定義とディスパッチャ
-  google/{auth,calendar,tasks,youtube,docs}.ts
+  claude/classifyEmails.ts YouTube案件メールかどうかのAI判定
+  gmail.ts                 Gmail APIから新着メールの一覧を取得
+  google/{auth,calendar,tasks,youtube,docs,gmailAuth}.ts
   weather.ts               気象庁(JMA)から仙台の天気を取得
   kv.ts                    会話履歴の一時保存(アイデアメモ本体はGoogleドキュメントに保存、ドキュメントIDのみKVに保持)
   auth/roles.ts            userId→owner/staff判定
@@ -58,16 +64,24 @@ lib/
    - YouTube Data API v3
    - YouTube Analytics API
    - Google Docs API(アイデアメモの保存先)
+   - Gmail API(YouTube案件メール監視用)
 3. 「OAuth同意画面」を設定:
    - User Type: 外部(個人利用なので審査不要の「テスト」状態のままでOK)
-   - テストユーザーにGO本人のGoogleアカウントを追加
-   - スコープ: Calendar読み書き、Tasks読み書き、YouTube Data読み取り、YouTube Analytics読み取り、Docs読み書き
+   - テストユーザーにGO本人のGoogleアカウントと、案件メール監視用のGoogleアカウント(hello.adhdworld@gmail.com)を追加
+   - スコープ: Calendar読み書き、Tasks読み書き、YouTube Data読み取り、YouTube Analytics読み取り、Docs読み書き、Gmail読み取り
+   - ⚠️ `gmail.readonly` はGoogleが「制限付きスコープ」に分類しており、OAuth同意画面が
+     「本番環境に公開」の状態だと認証時に「このアプリは確認されていません」という警告画面が出ます。
+     個人のテストユーザーとして自分のアカウントで認証する場合は警告を進めて許可すれば使えますが、
+     不特定多数に使わせる場合は追加の審査(CASA評価)が必要になる点に注意してください。
    - ⚠️ テストユーザー状態だとrefresh_tokenが7日で失効する場合があります。長期運用する場合は
      OAuth同意画面を「本番環境に公開」に切り替えてください(個人利用のみなら審査は基本不要)。
 4. 「認証情報」→「OAuth クライアント ID を作成」(アプリケーションの種類: ウェブアプリケーション)
-   - 承認済みのリダイレクトURIに `https://<デプロイ先ドメイン>/api/oauth/google/callback` を追加
-   - クライアントID/シークレットを `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` に設定
-   - `GOOGLE_REDIRECT_URI` にも同じコールバックURLを設定
+   - 承認済みのリダイレクトURIに以下の2つを追加:
+     - `https://<デプロイ先ドメイン>/api/oauth/google/callback`(秘書機能用)
+     - `https://<デプロイ先ドメイン>/api/oauth/gmail/callback`(Gmail監視用、別アカウント)
+   - クライアントID/シークレットを `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` に設定(2つの認証で共通利用)
+   - `GOOGLE_REDIRECT_URI` に秘書機能用のコールバックURL、`GOOGLE_GMAIL_REDIRECT_URI` にGmail監視用の
+     コールバックURLを設定
 
 ### 4. 環境変数の設定
 
@@ -78,6 +92,7 @@ lib/
 - `STAFF_LINE_USER_IDS`(カンマ区切り、複数スタッフ対応)
 - `ANTHROPIC_API_KEY` / `CLAUDE_MODEL`
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` / `GOOGLE_CALENDAR_ID`
+- `GOOGLE_GMAIL_REDIRECT_URI`(Gmail監視用アカウントの再認証コールバック先)
 - `JMA_OFFICE_CODE` / `JMA_AREA_CODE` / `JMA_AMEDAS_CODE`(仙台用のデフォルト値のまま変更不要)
 - `CRON_SECRET`(ランダムな文字列を生成して設定。Vercel Cronが自動でAuthorizationヘッダに付与し、
   `api/cron/morning.ts` 側で検証することで第三者からの不正呼び出しを防ぐ)
@@ -108,6 +123,18 @@ https://<デプロイ先ドメイン>/api/oauth/google/authorize
 「Google連携が完了しました」と表示されれば成功です。以降はrefresh_tokenがVercel KVに保存され、
 自動的にアクセストークンが更新されます。
 
+### 7. Gmail監視用アカウントの初回認証
+
+続けて、ブラウザで以下にアクセスしてください。**ログイン画面では秘書機能用のアカウントではなく、
+YouTube案件メールを受信する側のGoogleアカウント(hello.adhdworld@gmail.com)でログインしてください。**
+
+```
+https://<デプロイ先ドメイン>/api/oauth/gmail/authorize
+```
+
+「このアプリは確認されていません」という警告が出た場合は「詳細」→「(アプリ名)に移動」を選んで進めてください
+(制限付きスコープ`gmail.readonly`を使っているため表示されます)。「Gmail連携が完了しました」と表示されれば成功です。
+
 ---
 
 ## 動作確認のポイント
@@ -120,6 +147,8 @@ https://<デプロイ先ドメイン>/api/oauth/google/authorize
   届くことを確認(この際、予定には自動反映されないことも確認)。
 - `api/cron/morning.ts` はVercelダッシュボードの Cron Jobs 画面から手動実行(Run)して
   通知内容を確認できます。
+- `api/cron/gmail-check.ts` も同様に手動実行できます。監視対象のGmailアカウントにYouTube案件らしき
+  メール(PR・コラボ・タイアップ等)を送っておき、実行後にLINEへ通知が届くか確認してください。
 
 ## 既知の制約・注意点
 
@@ -136,3 +165,7 @@ https://<デプロイ先ドメイン>/api/oauth/google/authorize
 - Googleの認証スコープを追加・変更した場合(例: アイデアメモ機能でのDocs APIスコープ追加)、
   既存のrefresh_tokenには新スコープの権限が含まれていません。`/api/oauth/google/authorize` から
   再認証してrefresh_tokenを更新してください。
+- GmailチェックはVercel Hobbyプランの「Cronは1日1回まで」という制限に合わせて1日1回(朝8:15 JST)
+  の実行にしています。数分おきのリアルタイム通知にしたい場合はVercel Proプランへのアップグレード、
+  またはGmail Pub/Sub経由のプッシュ通知への切り替えが必要です。
+- Gmailチェックの初回実行時は直近25時間分のメールのみ確認します(それより古い未処理メールは対象外)。
