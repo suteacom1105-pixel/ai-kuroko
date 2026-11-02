@@ -93,3 +93,28 @@ KV_*                      (Upstash連携で自動設定)
 
 - 「AI秘書を外部に販売する」という別件のビジネス検討も同日に話したが、これは黒子本体とは別件のため本引継書には含めていない
 - READMEにセットアップ手順の全体像あり(`/Users/a1105/Claude/AI秘書/README.md`)
+
+## 8. さくらサーバーへの移行（2026-11-02開始、進行中）
+
+Vercel(Node.js)版をさくらサーバーのPHP版に作り直し中。予約システム(yoyaku.hizasupo.com)と同じ「並行で作って最後に切り替える」方式。
+**切り替えまで Vercel 版がそのまま本番。** 戻す時は LINE の Webhook URL を Vercel に戻すだけ。
+
+- コード: `sakura/`（このリポジトリ内。Composer 無しの素の PHP 8.2、保存は SQLite）。テスト `php sakura/tests/run.php`（32件）
+- 設置先: `~/kuroko_app/`（非公開）、`~/www/kuroko.hizasupo.com/`（公開）。`sh sakura/deploy/deploy.sh` で反映（Claude が実行可）
+- 鍵: `~/kuroko_app/config.secrets.php`（`sh sakura/deploy/setup_secrets.sh` をユーザーが実行。Claude は見ない）
+- ツール定義 `sakura/app/tools.json` は TS 版から書き出したもの。以後はこちらが正
+- 確認用: `php kuroko_app/cli/status.php`（設定状況）、`cli/try.php "メッセージ"`（LINE を通さず会話。ツールは本物が動く）、
+  `cron/morning.php --dry-run`・`cron/gmail_check.php --dry-run`（送信しない）
+- 切り替え前は `live` ファイルが無いので、定期実行は LINE に送らない
+
+### 進捗
+- [x] PHP 版の作成・テスト・サーバーへ設置（2026-11-02。天気取得まで本番サーバーで動作確認）
+- [ ] さくらのコントロールパネルでサブドメイン `kuroko.hizasupo.com` 追加（公開フォルダ `~/www/kuroko.hizasupo.com`）＋無料SSL（ユーザー）
+- [ ] `sh sakura/deploy/setup_secrets.sh`（LINE シークレット/トークン、新しい Claude キー、Google シークレット追加分、アイデアメモの URL）（ユーザー）
+- [ ] Google Cloud のクライアントに承認済みリダイレクトURI 2つ追加: `https://kuroko.hizasupo.com/api/oauth/google/callback`、`…/api/oauth/gmail/callback`（ユーザー）
+- [ ] `https://kuroko.hizasupo.com/api/oauth/google/authorize`（sutea.com1105@gmail.com）と `…/api/oauth/gmail/authorize`（hello.adhdworld@gmail.com）で認証（ユーザー）
+- [ ] 予約システム側: `sh deploy/deploy.sh` と `sh deploy/set_kuroko_token.sh`（予約システムのフォルダで、ユーザー）
+- [ ] サーバー上で動作確認（status / try.php / dry-run）（Claude）
+- [ ] 切り替え: LINE Developers で Webhook URL を `https://kuroko.hizasupo.com/api/webhook` に変更して「検証」（ユーザー）→
+      `php kuroko_app/cli/go_live.php` と crontab 登録（朝8:00 morning、gmail_check）→ Vercel の vercel.json の crons を外して再デプロイ（二重通知防止）（Claude）
+- [ ] 2週間ほど様子を見てから Vercel プロジェクト・Upstash・古い Claude キー・古い Google シークレットを削除
