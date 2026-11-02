@@ -77,17 +77,7 @@ KV_*                      (Upstash連携で自動設定)
 - [ ] 会話中に平文で共有されてしまった各種シークレット(LINEチャネルシークレット/アクセストークン、Google Client Secret、Anthropic APIキー)の再発行(推奨、未実施)
 - [ ] Web検索機能(市場調査・お店検索等に使える)は2026-08-12に一度実装を試みたが、コストが高い(検索$10/1000回+トークン費用)との理由で保留に。実装は行わない方針
 - [ ] チケット画像からの予定登録(2026-08-12実装)は実機での複数パターンのテスト(新幹線・飛行機・コンサート等、画像が不鮮明な場合の挙動)が未実施
-- [ ] YouTube案件メール通知(2026-08-12実装)はデプロイ・実機テストが未完了。必要な手順:
-      ① Google Cloud Console `ai-kuroko` プロジェクトで **Gmail API** を有効化
-      ② OAuth同意画面のテストユーザーに hello.adhdworld@gmail.com を追加、スコープに `gmail.readonly` を追加
-      ③ OAuthクライアントの承認済みリダイレクトURIに `https://ai-kuroko.vercel.app/api/oauth/gmail/callback` を追加
-      ④ Vercel環境変数に `GOOGLE_GMAIL_REDIRECT_URI` を設定
-      ⑤ `vercel --prod` でデプロイ
-      ⑥ ブラウザで `/api/oauth/gmail/authorize` にアクセスし、**hello.adhdworld@gmail.comでログインして認証**
-         (「このアプリは確認されていません」の警告が出た場合は「詳細」→進める、を選択。gmail.readonlyは
-         Googleの「制限付きスコープ」のため表示される)
-      ⑦ hello.adhdworld@gmail.com宛にYouTube案件らしいメールを送り、Vercelダッシュボードから
-         `api/cron/gmail-check` を手動実行してLINEに通知が届くか確認
+- [x] YouTube案件メール通知(2026-08-12実装): Gmail API有効化・hello.adhdworld@gmail.comでの認証・実機テスト(微妙な文面の案件メールも検知)まで完了
 
 ## 7. 補足
 
