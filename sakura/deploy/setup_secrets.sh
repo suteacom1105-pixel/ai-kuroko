@@ -2,12 +2,16 @@
 # さくらのサーバーに黒子の鍵（config.secrets.php）を保存する（あなたがターミナルで実行）
 #   sh sakura/deploy/setup_secrets.sh
 # 入力した値は画面に表示されず、このパソコンにも保存されません。もう一度実行すると全部入れ直しになります。
+# 貼り付けを間違えたら Ctrl+C で中断してやり直せます（最後の項目まで答えるまでは何も保存されません）。
 set -eu
 
 SSH="ssh -i $HOME/.ssh/semic_timecard -o IdentitiesOnly=yes"
 HOST="semic@semic.sakura.ne.jp"
 
-ask() { printf "%s" "$1"; stty -echo; read REPLY_VALUE; stty echo; echo; }
+# 途中で Ctrl+C しても、入力が見えない状態のまま残らないようにする（何も保存されない）
+trap 'stty echo' EXIT INT TERM
+# 貼り付けた値の前後の空白は取り除く
+ask() { printf "%s" "$1"; stty -echo; read REPLY_VALUE; stty echo; echo; REPLY_VALUE=$(printf "%s" "$REPLY_VALUE" | tr -d '[:space:]'); }
 
 echo "1/5 LINE Developers →「AI秘書 黒子」チャネル →「チャネル基本設定」タブの「チャネルシークレット」"
 ask "    貼り付け（表示されません）: "; LINE_SECRET=$REPLY_VALUE
