@@ -107,5 +107,5 @@ Vercel(Node.js)版をさくらサーバーのPHP版に作り直し中。予約�
 - [ ] 予約システム側: `sh deploy/deploy.sh` と `sh deploy/set_kuroko_token.sh`（予約システムのフォルダで、ユーザー）
 - [ ] サーバー上で動作確認（status / try.php / dry-run）（Claude）
 - [ ] 切り替え: LINE Developers で Webhook URL を `https://kuroko.hizasupo.com/api/webhook` に変更して「検証」（ユーザー）→
-      `php kuroko_app/cli/go_live.php` と crontab 登録（朝8:00 morning、gmail_check は**1時間おき・毎時5分**＝ユーザー指定）→ Vercel の vercel.json の crons を外して再デプロイ（二重通知防止）（Claude）
+      `php kuroko_app/cli/go_live.php` と crontab 登録（朝8:00 morning、gmail_check は**1時間おき・毎時5分**＝ユーザー指定、**23:00 evening**＝翌日に予定がある時だけ明日の予定を送る）→ Vercel の vercel.json の crons を外して再デプロイ（二重通知防止）（Claude）
 - [ ] 2週間ほど様子を見てから Vercel プロジェクト・Upstash・古い Claude キー・古い Google シークレットを削除

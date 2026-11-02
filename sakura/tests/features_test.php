@@ -199,3 +199,21 @@ test('dry-run は送らず、前回チェック時刻も変えない', function 
     eq([], calls_to('https://api.line.me'));
     eq(1000, kv_get(GMAIL_LAST_CHECKED_KEY));
 });
+
+group('前日23時のお知らせ');
+test('翌日の予定だけを並べる（メモ欄も）', function () {
+    $GLOBALS['__now'] = '2026-11-02 23:00:00';
+    fake_http(array_merge(google_routes(), [['GET', 'https://www.googleapis.com/calendar/v3/calendars/primary/events', json_ok(['items' => [
+        ['id' => '1', 'summary' => '新幹線 はやぶさ108号', 'description' => "はやぶさ108号\n4号車12番E席", 'start' => ['dateTime' => '2026-11-03T06:22:00+09:00'], 'end' => ['dateTime' => '2026-11-03T08:00:00+09:00']],
+        ['id' => '2', 'summary' => '文化の日', 'start' => ['date' => '2026-11-03'], 'end' => ['date' => '2026-11-04']],
+    ]])]]));
+    with_google_tokens();
+    eq("明日 11/3(火) の予定です🌙\n・06:22 新幹線 はやぶさ108号(はやぶさ108号 / 4号車12番E席)\n・終日 文化の日", build_evening_message());
+    parse_str(parse_url(calls_to('https://www.googleapis.com/calendar')[0]['url'], PHP_URL_QUERY), $q);
+    eq(['2026-11-03T00:00:00+09:00', '2026-11-03T23:59:59+09:00'], [$q['timeMin'], $q['timeMax']], '翌日だけを取る');
+});
+test('翌日に予定が無ければ送らない（null）', function () {
+    fake_http(array_merge(google_routes(), [['GET', 'https://www.googleapis.com/calendar/v3/calendars/primary/events', json_ok(['items' => []])]]));
+    with_google_tokens();
+    eq(null, build_evening_message());
+});
