@@ -3,8 +3,105 @@ import { createEvent, deleteEvent, listEvents, updateEvent } from '../google/cal
 import { completeTask, createTask, deleteTask, listTasks } from '../google/tasks';
 import { getVideoAnalytics, listRecentVideos } from '../google/youtube';
 import { addIdea, listIdeas } from '../google/docs';
+import {
+  blockClinicTime,
+  cancelClinicBooking,
+  createClinicBooking,
+  getClinicDay,
+  listClinicMenus,
+  rescheduleClinicBooking,
+  unblockClinicTime,
+  type ClinicResource,
+} from '../clinic';
+
+const CLINIC_RESOURCE_SCHEMA = {
+  type: 'array',
+  items: { type: 'string', enum: ['treatment', 'treatment2', 'training'] },
+  description: '止める担当。treatment=伊藤(施術1)、treatment2=榊(施術2)、training=トレーニング',
+};
 
 export const TOOLS: Anthropic.Tool[] = [
+  {
+    name: 'clinic_get_day',
+    description:
+      'ひざスポ接骨院の予約システムから、指定日の患者予約一覧と予約不可(販売不可)の時間帯を取得する。GOの個人の予定(list_events)とは別物。予約の追加・キャンセル・予約不可の解除の前に、対象や空きの確認に使う。',
+    input_schema: {
+      type: 'object',
+      properties: {
+        date: { type: 'string', description: '日付 YYYY-MM-DD (JST)' },
+      },
+      required: ['date'],
+    },
+  },
+  {
+    name: 'clinic_list_menus',
+    description: 'ひざスポ接骨院の予約メニュー一覧(id・名前・種別)を取得する。予約を追加する前に menuId を調べるのに使う。',
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'clinic_create_booking',
+    description:
+      'ひざスポ接骨院の予約システムに患者の予約を1件追加する。所要時間はメニューの種別で決まる(施術30分、トレーニング60分等)。空いていない・営業時間外ならエラーになる。',
+    input_schema: {
+      type: 'object',
+      properties: {
+        patientName: { type: 'string', description: '患者さんの名前' },
+        menuId: { type: 'string', description: 'clinic_list_menus で取得したメニューのid' },
+        date: { type: 'string', description: '日付 YYYY-MM-DD (JST)' },
+        startTime: { type: 'string', description: '開始時刻 HH:mm (JST)' },
+        phone: { type: 'string', description: '電話番号(任意。言われた場合のみ)' },
+      },
+      required: ['patientName', 'menuId', 'date', 'startTime'],
+    },
+  },
+  {
+    name: 'clinic_cancel_booking',
+    description: 'ひざスポ接骨院の患者予約をキャンセルする。bookingId は clinic_get_day の結果から取得すること。',
+    input_schema: {
+      type: 'object',
+      properties: { bookingId: { type: 'string' } },
+      required: ['bookingId'],
+    },
+  },
+  {
+    name: 'clinic_reschedule_booking',
+    description: 'ひざスポ接骨院の患者予約の日時を変更する(メニュー・患者名は変更不可)。bookingId は clinic_get_day の結果から取得すること。',
+    input_schema: {
+      type: 'object',
+      properties: {
+        bookingId: { type: 'string' },
+        date: { type: 'string', description: '変更後の日付 YYYY-MM-DD (JST)' },
+        startTime: { type: 'string', description: '変更後の開始時刻 HH:mm (JST)' },
+      },
+      required: ['bookingId', 'date', 'startTime'],
+    },
+  },
+  {
+    name: 'clinic_block_time',
+    description:
+      'ひざスポ接骨院の予約システムで、指定日時を予約不可(販売不可)にする。患者がその時間に予約できなくなる。既に入っている予約は消えない。',
+    input_schema: {
+      type: 'object',
+      properties: {
+        date: { type: 'string', description: '日付 YYYY-MM-DD (JST)' },
+        startTime: { type: 'string', description: '開始時刻 HH:mm (JST)' },
+        endTime: { type: 'string', description: '終了時刻 HH:mm (JST、この時刻は含まない)' },
+        resources: CLINIC_RESOURCE_SCHEMA,
+        note: { type: 'string', description: 'メモ(任意。理由など)' },
+      },
+      required: ['date', 'startTime', 'endTime', 'resources'],
+    },
+  },
+  {
+    name: 'clinic_unblock_time',
+    description:
+      'ひざスポ接骨院の予約不可(販売不可)を解除する。batchId は clinic_get_day の blocks から取得すること(同じ batchId の担当はまとめて解除される)。',
+    input_schema: {
+      type: 'object',
+      properties: { batchId: { type: 'string' } },
+      required: ['batchId'],
+    },
+  },
   {
     name: 'list_events',
     description:
@@ -216,6 +313,39 @@ export async function executeTool(name: string, input: Record<string, unknown>):
     }
     case 'analyze_youtube_video': {
       return getVideoAnalytics(input.videoId as string, input.publishedAt as string);
+    }
+    case 'clinic_get_day': {
+      return getClinicDay(input.date as string);
+    }
+    case 'clinic_list_menus': {
+      return listClinicMenus();
+    }
+    case 'clinic_create_booking': {
+      return createClinicBooking({
+        patientName: input.patientName as string,
+        menuId: input.menuId as string,
+        date: input.date as string,
+        startTime: input.startTime as string,
+        phone: input.phone as string | undefined,
+      });
+    }
+    case 'clinic_cancel_booking': {
+      return cancelClinicBooking(input.bookingId as string);
+    }
+    case 'clinic_reschedule_booking': {
+      return rescheduleClinicBooking(input.bookingId as string, input.date as string, input.startTime as string);
+    }
+    case 'clinic_block_time': {
+      return blockClinicTime({
+        date: input.date as string,
+        startTime: input.startTime as string,
+        endTime: input.endTime as string,
+        resources: input.resources as ClinicResource[],
+        note: input.note as string | undefined,
+      });
+    }
+    case 'clinic_unblock_time': {
+      return unblockClinicTime(input.batchId as string);
     }
     default:
       return { error: `未知のツールです: ${name}` };

@@ -22,6 +22,7 @@ lib/
   claude/tools.ts          Claude Tool Use定義とディスパッチャ
   claude/classifyEmails.ts YouTube案件メールかどうかのAI判定
   gmail.ts                 Gmail APIから新着メールの一覧を取得
+  clinic.ts                ひざスポ接骨院の予約システム(yoyaku.hizasupo.com)の管理APIクライアント
   google/{auth,calendar,tasks,youtube,docs,gmailAuth}.ts
   weather.ts               気象庁(JMA)から仙台の天気を取得
   kv.ts                    会話履歴の一時保存(アイデアメモ本体はGoogleドキュメントに保存、ドキュメントIDのみKVに保持)
@@ -93,6 +94,8 @@ lib/
 - `ANTHROPIC_API_KEY` / `CLAUDE_MODEL`
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` / `GOOGLE_CALENDAR_ID`
 - `GOOGLE_GMAIL_REDIRECT_URI`(Gmail監視用アカウントの再認証コールバック先)
+- `YOYAKU_API_TOKEN`(接骨院の予約システム操作用。予約システム側の`sh deploy/set_kuroko_token.sh`が
+  さくら側と同時に自動設定する。設定後は黒子の再デプロイが必要)
 - `JMA_OFFICE_CODE` / `JMA_AREA_CODE` / `JMA_AMEDAS_CODE`(仙台用のデフォルト値のまま変更不要)
 - `CRON_SECRET`(ランダムな文字列を生成して設定。Vercel Cronが自動でAuthorizationヘッダに付与し、
   `api/cron/morning.ts` 側で検証することで第三者からの不正呼び出しを防ぐ)
@@ -145,6 +148,8 @@ https://<デプロイ先ドメイン>/api/oauth/gmail/authorize
 - チケットのスクリーンショット画像をLINEで送り、日時・座席番号等が読み取られて予定に自動登録されることを確認(GO本人のみ対応、スタッフの画像は無視される)。
 - スタッフのアカウントから何か送信し、GO本人に「【伝言】〇〇さんより:」という形でプッシュ通知が
   届くことを確認(この際、予定には自動反映されないことも確認)。
+- 「11/10 15時 ひざ治療で田中さん入れといて」「11/10 20時〜21時 伊藤を予約不可にして」等を送り、
+  https://yoyaku.hizasupo.com/admin の予約表に反映されることを確認(取り消し・解除も同様に依頼できる)。
 - `api/cron/morning.ts` はVercelダッシュボードの Cron Jobs 画面から手動実行(Run)して
   通知内容を確認できます。
 - `api/cron/gmail-check.ts` も同様に手動実行できます。監視対象のGmailアカウントにYouTube案件らしき

@@ -37,6 +37,10 @@ YouTube分析を扱う。Vercelのサーバーレス関数で動作。**現在�
   Claudeが「YouTube案件(広告・PR・コラボ・タイアップ等)」と判定したメールだけLINEに通知。
   Vercel HobbyプランのCron制限(1日1回まで)のため、この頻度にしている。デプロイ・Gmail API有効化・
   監視用アカウントでの再認証・実機テストが未完了(下記6参照)
+- ひざスポ接骨院の予約表操作(2026-11-02実装): LINEで「〇日〇時 〇〇さん入れといて」「〇時〜〇時を予約不可にして」等と送ると、
+  本番予約システム(https://yoyaku.hizasupo.com、コードは`/Users/a1105/Claude/予約システム/yoyaku-sakura`)の管理APIで
+  予約追加・キャンセル・日時変更・予約不可の設定/解除を行う。GO本人のみ。認証は`X-Kuroko-Token`ヘッダー(Vercel環境変数`YOYAKU_API_TOKEN`と
+  さくらの`~/yoyaku_app/config.ai.php`に同じ値)。メニュー・止める担当の指定がなければ黒子が確認する
 - スタッフ伝言取次(窓口モード): 実装済みだが**実際のスタッフでの動作テスト未実施**
 
 ## 4. 環境変数(Vercel Environment Variablesに設定済み。値はVercelダッシュボードで確認)
