@@ -5,3 +5,9 @@ dist/
 .vercel/
 *.log
 .claude/
+
+# さくら版の秘密の設定・データ（サーバーにだけ置く）
+sakura/app/config.secrets.php
+sakura/app/config.local.php
+sakura/app/data/
+sakura/app/live

@@ -1,0 +1,6 @@
+Options -MultiViews -Indexes
+DirectoryIndex index.php
+
+RewriteEngine On
+RewriteRule ^_app\.php$ - [F]
+RewriteRule ^api/ index.php [L,QSA]
