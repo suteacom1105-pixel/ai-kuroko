@@ -109,12 +109,13 @@ Vercel(Node.js)版をさくらサーバーのPHP版に作り直し中。予約�
 
 ### 進捗
 - [x] PHP 版の作成・テスト・サーバーへ設置（2026-11-02。天気取得まで本番サーバーで動作確認）
-- [ ] さくらのコントロールパネルでサブドメイン `kuroko.hizasupo.com` 追加（公開フォルダ `~/www/kuroko.hizasupo.com`）＋無料SSL（ユーザー）
-- [ ] `sh sakura/deploy/setup_secrets.sh`（LINE シークレット/トークン、新しい Claude キー、Google シークレット追加分、アイデアメモの URL）（ユーザー）
-- [ ] Google Cloud のクライアントに承認済みリダイレクトURI 2つ追加: `https://kuroko.hizasupo.com/api/oauth/google/callback`、`…/api/oauth/gmail/callback`（ユーザー）
+- [x] サブドメイン `kuroko.hizasupo.com` 追加（www なし・IPv6 なし）（2026-11-02、http で到達確認）
+- [ ] 無料SSL の反映待ち（ユーザーが申請済み）
+- [x] `sh sakura/deploy/setup_secrets.sh`（2026-11-02。LINE トークン・新しい Claude キー(`kuroko-sakura`、期限なし)はサーバー上で疎通確認済み。アイデアメモは元のドキュメントを引き継ぎ）
+- [x] Google Cloud のクライアントに承認済みリダイレクトURI 2つ追加、シークレットを追加（2026-11-02。旧 URI・旧シークレット `****B9ET` は Vercel 版用に残してある）。※Google Cloud は2026-08-26から2段階認証が必須（設定済み）
 - [ ] `https://kuroko.hizasupo.com/api/oauth/google/authorize`（sutea.com1105@gmail.com）と `…/api/oauth/gmail/authorize`（hello.adhdworld@gmail.com）で認証（ユーザー）
 - [ ] 予約システム側: `sh deploy/deploy.sh` と `sh deploy/set_kuroko_token.sh`（予約システムのフォルダで、ユーザー）
 - [ ] サーバー上で動作確認（status / try.php / dry-run）（Claude）
 - [ ] 切り替え: LINE Developers で Webhook URL を `https://kuroko.hizasupo.com/api/webhook` に変更して「検証」（ユーザー）→
-      `php kuroko_app/cli/go_live.php` と crontab 登録（朝8:00 morning、gmail_check）→ Vercel の vercel.json の crons を外して再デプロイ（二重通知防止）（Claude）
+      `php kuroko_app/cli/go_live.php` と crontab 登録（朝8:00 morning、gmail_check は**1時間おき・毎時5分**＝ユーザー指定）→ Vercel の vercel.json の crons を外して再デプロイ（二重通知防止）（Claude）
 - [ ] 2週間ほど様子を見てから Vercel プロジェクト・Upstash・古い Claude キー・古い Google シークレットを削除
